@@ -52,9 +52,14 @@ results_folder = param_dict['results_folder']
 
 #params or supply a params file
 dx = param_dict['dx'] #pixel resolution in arcmins
-boxsize_am = param_dict['boxsize_am'] #boxsize in arcmins
-nx = int(boxsize_am/dx)
-mapparams = [nx, nx, dx]
+@boxsize_am = param_dict['boxsize_am'] #boxsize in arcmins
+nx = param_dict['boxsize_nx'] #boxsize in pixels
+nfft = 2*nx
+boxsize_am = nx*dx
+#nx = int(boxsize_am/dx)
+mapparams    = [nx,   nx,   dx]
+fftmapparams = [nfft, nfft, dx]
+assert( int(nx/2)*2 == nx) #odd numbers not dealt with.
 x1,x2 = -nx/2. * dx, nx/2. * dx
 verbose = 0
 pol = param_dict['pol']
@@ -133,11 +138,11 @@ rho_def=param_dict['rho_def']
 profile_name=param_dict['profile_name']
 
 #cosmology
-h=param_dict['h']
-omega_m=param_dict['omega_m']
-omega_lambda=param_dict['omega_lambda']
-z_lss=param_dict['z_lss']
-T_cmb=param_dict['T_cmb']
+#h=param_dict['h']
+#omega_m=param_dict['omega_m']
+#omega_lambda=param_dict['omega_lambda']
+#z_lss=param_dict['z_lss']
+#T_cmb=param_dict['T_cmb']
 
 #cutouts specs 
 cutout_size_am = param_dict['cutout_size_am'] #arcmins
@@ -150,9 +155,11 @@ cutout_size_am_for_grad = param_dict['cutout_size_am_for_grad'] #arcminutes
 
 ########################
 #get ra, dec or map-pixel grid
-ra=np.linspace(x1,x2, nx) #arcmins
-dec=np.linspace(x1,x2, nx) #arcmins
-ra_grid, dec_grid=np.meshgrid(ra,dec)
+xvec=np.linspace(-0.5*dx/60.*(nx-1),
+                  0.5*dx/60.*(nx-1),
+                  , nx) #degrees
+
+x_grid_deg, y_grid_deg=np.meshgrid(xvec,xvec)
 ########################
 
 ########################
@@ -210,13 +217,12 @@ if debug:
 if clusters_or_randoms == 'clusters':
     print('\tgetting NFW convergence for lensing')
     #NFW lensing convergence
-    ra_grid_deg, dec_grid_deg = ra_grid/60., dec_grid/60.
 
     M200c_list = np.tile(cluster_mass, total_clusters)
     redshift_list = np.tile(cluster_z, total_clusters)
     ra_list = dec_list = np.zeros(total_clusters)
 
-    kappa_arr = lensing.get_convergence(ra_grid_deg, dec_grid_deg, ra_list, dec_list, M200c_list, redshift_list, param_dict)
+    kappa_arr = lensing.get_convergence(x_grid_deg, y_grid_deg, ra_list, dec_list, M200c_list, redshift_list, param_dict)
     print('\tShape of convergence array is %s' %(str(kappa_arr.shape)))
     #imshow(kappa_arr[0]); colorbar(); show(); sys.exit()
 ########################
@@ -279,7 +285,7 @@ for simcntr in range( start, end ):
             cmb_map_lensed=[]
             for tqu in range(tqulen):
                 unlensed_cmb=np.copy( cmb_map[tqu] )
-                lensed_cmb=lensing.perform_lensing(ra_grid_deg, dec_grid_deg, unlensed_cmb, kappa_arr[i], mapparams)
+                lensed_cmb=lensing.perform_lensing(x_grid_deg, y_grid_deg, unlensed_cmb, kappa_arr[i], mapparams)
                 if i == 0 and debug:
                     subplot(1,tqulen,tqu+1); imshow(lensed_cmb - unlensed_cmb, extent=[x1,x2,x1,x2], cmap=cmap); colorbar(); title(r'Sim=%s: %s' %(i, tqu_tit_arr[tqu])); 
                     axhline(lw=1.); axvline(lw=1.); xlabel(r'X [arcmins]'); 
