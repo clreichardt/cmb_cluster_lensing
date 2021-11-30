@@ -8,6 +8,21 @@ from pylab import *
 #################################################################################
 #################################################################################
 
+#this is the un-zero-padded map size
+def get_apod_mask(cutoutparams,apodscale):
+    assert(cutoutparams[0] == coutoutparams[1])
+    pix_apod = int(np.ceiling(apodscale / cutoutparams[2]))
+    vec = np.ones(coutoutparams[0],dtype=np.float32)
+    x = 1.-np.cos(np.arange(0,pix_apod) * (np.pi / pix_apod))
+    vec[:pix_apod] *= x
+    vec[-pix_apod:]*= x
+    x2,y2 = np.meshgrid(vec,vec)
+    apod = x2*y2
+    return apod
+  
+    
+
+
 def get_cmb_cls(cls_file, pol=False):
     el, dl_tt, dl_ee, dl_bb, dl_te =np.loadtxt(cls_file, unpack=1)
     dl_all=np.asarray( [dl_tt, dl_ee, dl_bb, dl_te] )

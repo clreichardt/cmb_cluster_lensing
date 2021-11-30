@@ -122,6 +122,22 @@ else:
     tqulen = 3
 tqu_tit_arr = ['T', 'Q', 'U']
 
+#Map properties:
+try:
+    iso_ell_hpf = param_dict['iso_ell_hpf']
+except:
+    iso_ell_hpf = 400.
+try:
+    x_ell_hpf = param_dict['x_ell_hpf']
+except:
+    x_ell_hpf = 400.
+
+#apod properties:
+try:
+    edge_taper_arcmin = param_dict['edge_taper_arcmin']
+except: 
+    edge_taper_arcmin = 10.0 #arcmin
+small_apod_mask = tools.get_apod_mask(mapparams,edge_taper_arcmin)
 
 #sim stuffs
 #total_sim_types = param_dict['total_sim_types'] #unlensed background and lensed clusters
@@ -175,7 +191,9 @@ el, cl = tools.get_cmb_cls(cls_file, pol = pol)
 
 ########################
 #get beam and noise
-bl = tools.get_bl(beamval, el, make_2d = 1, mapparams = mapparams)
+bl = tools.get_bl(beamval, el, make_2d = 1, mapparams = fftmapparams)
+
+#noise
 if ilc_file is None:
     nl_dic = tools.get_nl_dic(noiseval, el, pol = pol)
 else:
@@ -212,6 +230,28 @@ if debug:
     xlabel(r'Multipole $\ell$')
     show()
 ########################
+
+
+########################
+# Loop over cluster positions, randoms or simulated clusters
+for index in range(start,end):
+    #this could be a cut from the data; a cutout at random loc from the data, a simulated cluster loc, or a simulated random loc
+    #local_mask will be all ones, unless there is a pt source that is masked. It will be multiplied by the field apod mask before the fft
+    large_cutout, local_mask = tools.get_big_cutout(mapparams,index,type=data_type)
+
+    if save_intermediate:
+        output_dic[data_type]['map'][index]=np.asarray( large_cutout )
+        output_dic[data_type]['local_mask'][index]=np.asarray( local_mask )
+
+
+        #get median gradient direction and magnitude for all cluster cutouts + rotate them along median gradient direction.
+        grad_mag_arr, grad_orien_arr, cutouts_rotated_arr = tools.get_rotated_tqu_cutouts(sim_arr, sim_arr, nclustersorrandoms, tqulen, mapparams, cutout_size_am, 
+                                                                                            apply_wiener_filter=apply_wiener_filter, cl_signal = cl_signal_arr, cl_noise = cl_noise_arr, 
+                                                                                            lpf_gradient_filter = lpf_gradient_filter, cutout_size_am_for_grad = cutout_size_am_for_grad)
+        
+        sim_dic[sim_type]['cutouts_rotated'][simcntr]=cutouts_rotated_arr
+        sim_dic[sim_type]['grad_mag'][simcntr]=grad_mag_arr    
+
 
 ########################
 if clusters_or_randoms == 'clusters':
