@@ -214,6 +214,67 @@ def get_rotated_tqu_cutouts_simple(sim_arr, grad_orientation_arr, totobjects, tq
 
     return cutouts_rotated_arr
 
+
+
+def get_rotated_tqu_cutout(maps, sim_arr_for_grad_direction, totobjects, tqulen, mapparams, cutout_size_am, perform_rotation = True, apply_wiener_filter=True, cl_signal=None, cl_noise=None, lpf_gradient_filter=None, cutout_size_am_for_grad=6.):
+large_cutout, local_mask, small_apod_mask, mapparams, fftmapparams,
+                                                                        cutout_size_am, cutout_size_am_for_grad, 
+                                                                        gradient_map = None,
+                                                                        perform_random_rotation = perform_random_rotation, 
+                                                                        apply_fft_filter = gradient_filter )
+
+
+    """
+    get median gradient direction and magnitude for all cluster cutouts + rotate them along median gradient direction.
+    """
+
+    ey1, ey2, ex1, ex2=extract_cutout(mapparams, cutout_size_am)
+    
+    cutouts_rotated_arr=[]
+    grad_mag_arr=[]
+    grad_orien_arr=[]
+    #for i in tqdm(range(totobjects)):
+    for i in range(totobjects):
+        tmp_grad_mag_arr=[]
+        tmp_cutouts_rotated=[]
+        tmp_grad_orien_arr=[]
+        for tqu in range(tqulen):
+            cutout_grad, grad_orientation, grad_mag=get_gradient(sim_arr_for_grad_direction[i][tqu], mapparams=mapparams, apply_wiener_filter=apply_wiener_filter, cl_signal=cl_signal[tqu], cl_noise=cl_noise[tqu], lpf_gradient_filter=lpf_gradient_filter, cutout_size_am_for_grad=cutout_size_am_for_grad)
+
+            cutout=sim_arr[i][tqu][ey1:ey2, ex1:ex2]
+            median_grad_mag = np.median(grad_mag)
+            median_grad_orientation = np.median(grad_orientation)
+            if (0):
+                median_grad_orientation = round(median_grad_orientation, 1)
+                median_grad_mag = round(median_grad_mag, 1)
+
+            if perform_rotation:
+                cutout_rotated=rotate_cutout( cutout, median_grad_orientation )
+            else:
+                cutout_rotated = np.copy( cutout )
+            cutout_rotated=cutout_rotated - np.mean(cutout_rotated)
+
+            '''
+            subplot(131);imshow(sim_arr_for_grad_direction[i][tqu][ey1:ey2, ex1:ex2]); colorbar();
+            subplot(132);imshow(sim_arr[i][tqu][ey1:ey2, ex1:ex2]); colorbar();
+            subplot(133);imshow(cutout_rotated); colorbar(); show(); sys.exit()
+            '''
+
+            tmp_cutouts_rotated.append( cutout_rotated )
+            tmp_grad_mag_arr.append( median_grad_mag )
+            tmp_grad_orien_arr.append( median_grad_orientation )
+
+        grad_mag_arr.append( np.asarray(tmp_grad_mag_arr) )
+        cutouts_rotated_arr.append( np.asarray( tmp_cutouts_rotated ) )
+        grad_orien_arr.append( np.asarray( tmp_grad_orien_arr ) )
+
+    grad_mag_arr=np.asarray(grad_mag_arr)
+    grad_orien_arr=np.asarray(grad_orien_arr)
+    cutouts_rotated_arr=np.asarray(cutouts_rotated_arr)
+
+    return grad_mag_arr, grad_orien_arr, cutouts_rotated_arr
+
+
 def get_rotated_tqu_cutouts(sim_arr, sim_arr_for_grad_direction, totobjects, tqulen, mapparams, cutout_size_am, perform_rotation = True, apply_wiener_filter=True, cl_signal=None, cl_noise=None, lpf_gradient_filter=None, cutout_size_am_for_grad=6.):
 
     """
