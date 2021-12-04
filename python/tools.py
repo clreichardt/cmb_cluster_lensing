@@ -36,6 +36,58 @@ def get_cmb_cls(cls_file, pol=False):
     #print(len(el))
     return el, cl
 
+def get_big_cutout(mapparams,index,data_type,sim_info=sim_info,data_info=data_info):
+    if is_sim(data_type):
+        return get_big_cutout_sim(mapparams,index,data_type,sim_info)
+    return get_big_cutout_data(mapparams,index,data_type,data_info)
+    
+
+def get_big_cutout_sim(mapparams,index,data_type,sim_info):
+    nx,ny,dx = mapparams
+    nx0,ny0,dx0 = sim_info['fftmapparams']
+    bl = sim_info['bl']
+    nl_dic = sim_info['nl_dic']
+    cl_fg_dic = sim_info['cl_fg_dic']
+    x_grid_deg = sim_info['x_grid_deg']
+    y_grid_deg = sim_info['y_grid_deg']
+
+
+def make_temperature_map():
+    unlensed_cmb = np.asarray( [flatsky.make_gaussian_realisation(fftmapparams, el, cl[0], bl=None)] )
+    noise_map=np.asarray( [flatsky.make_gaussian_realisation(fftmapparams, el, nl[0])] )
+    if sim_info['fg_gaussian']:
+        fg_map=np.asarray( [flatsky.make_gaussian_realisation(fftmapparams, el, cl_fg[0])] )
+    lensed_cmb=np.asarray(lensing.perform_lensing(ra_grid_deg, dec_grid_deg, unlensed_cmb, kappa_arr, fftmapparams))
+
+    
+    
+    return len
+    
+
+
+def prep_fg_spectra(sim_info):
+    el_fg = None
+    cl_fg = None
+    if sim_info['fg_gaussian']:
+        el_fg, cl_fg_tmp = foregrounds.get_foreground_power_spt('all', freq1=150, freq2=None, units='uk', lmax = None)
+        cl_fg  = [np.interp(el,el_fg_tmp,cl_fg_tmp)]
+        if sim_info['pol']:
+            el_fg_tmp, cl_dg_cl = foregrounds.get_foreground_power_spt('DG-Cl', freq1=150, freq2=None, units='uk', lmax = None)
+            el_fgb, cl_dg_po = foregrounds.get_foreground_power_spt('DG-Po', freq1=150, freq2=None, units='uk', lmax = None)
+            el_fgb, cl_rg = foregrounds.get_foreground_power_spt('RG', freq1=150, freq2=None, units='uk', lmax = None)
+            cl_dg = cl_dg_cl + cl_dg_po
+            cl_dg = cl_dg * param_dict['pol_frac_cib']**2
+            cl_rg = cl_rg * param_dict['pol_frac_cib']**2
+            cl_fg_P = cl_dg + cl_rg
+            cl_fg.append(np.interp(el,el_fg_tmp,cl_fg_P))
+            cl_fg = np.asarray( cl_fg )
+
+    return el_fg, cl_fg
+
+        
+
+
+        
 #################################################################################
 
 def get_nl_dic(noiseval, el, pol=False):

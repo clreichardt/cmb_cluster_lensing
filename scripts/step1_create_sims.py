@@ -239,7 +239,9 @@ for index in range(start,end):
     #local_mask will be all ones, unless there is a pt source that is masked. It will be multiplied by the field apod mask before the fft
 
     print('consider doing lensing on central region only')
-    large_cutout, local_mask = tools.get_big_cutout(mapparams,index,type=data_type)
+    large_cutout, local_mask = tools.get_big_cutout(mapparams,index,data_type,
+                                                    sim_info=sim_info,
+                                                    data_info=data_info )
 
 
 
