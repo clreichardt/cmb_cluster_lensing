@@ -45,29 +45,32 @@ def get_big_cutout(mapparams,index,data_type,sim_info=sim_info,data_info=data_in
 def get_big_cutout_sim(mapparams,index,data_type,sim_info):
     nx,ny,dx = mapparams
     nx0,ny0,dx0 = sim_info['fftmapparams']
-    bl = sim_info['bl']
-    nl_dic = sim_info['nl_dic']
-    cl_fg_dic = sim_info['cl_fg_dic']
-    x_grid_deg = sim_info['x_grid_deg']
-    y_grid_deg = sim_info['y_grid_deg']
+    
 
 
     ############
     # WRITE MORE 
     ############
     if is_pol(data_type):
-        big_map = make_pol_map(sim_info)
+        big_map = make_pol_map(mapparams,sim_info)
     else:
-        big_map = make_tempurature_map(sim_info)
+        big_map = make_tempurature_map(mapparams,sim_info)
 
 
 
-def make_temperature_map():
-    unlensed_cmb = np.asarray( [flatsky.make_gaussian_realisation(fftmapparams, el, cl[0], bl=None)] )
-    noise_map=np.asarray( [flatsky.make_gaussian_realisation(fftmapparams, el, nl[0])] )
+def make_temperature_map(mapparams, sim_info):
+    bl = sim_info['bl']
+    nl_dic = sim_info['nl_dic']
+    cl_fg_tt = sim_info['cl_fg_tt']
+    x_grid_deg = sim_info['x_grid_deg']
+    y_grid_deg = sim_info['y_grid_deg']
+    el = sim_info['el']
+    cl_tt=sim_info['cl_tt']
+    unlensed_cmb = np.asarray( [flatsky.make_gaussian_realisation(mapparams, el, cl_tt, bl=None)] )
+    noise_map=np.asarray( [flatsky.make_gaussian_realisation(mapparams, el, nl_tt,bl=None)] )
     if sim_info['fg_gaussian']:
-        fg_map=np.asarray( [flatsky.make_gaussian_realisation(fftmapparams, el, cl_fg[0])] )
-    lensed_cmb=np.asarray(lensing.perform_lensing(ra_grid_deg, dec_grid_deg, unlensed_cmb, kappa_arr, fftmapparams))
+        fg_map=np.asarray( [flatsky.make_gaussian_realisation(mapparams, el, cl_fg[0])] )
+    lensed_cmb=np.asarray(lensing.perform_lensing(r, unlensed_cmb, kappa_arr, fftmapparams))
 
     
     

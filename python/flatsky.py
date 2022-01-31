@@ -298,7 +298,11 @@ def make_gaussian_realisation(mapparams, el, cl, cl2 = None, cl12 = None, cltwod
     if bl is not None:
         if np.ndim(bl) != 2:
             bl = cl_to_cl2d(el, bl, mapparams)
-        SIM = np.fft.ifft2( np.fft.fft2(SIM) * bl).real
+        if cl2 is None:
+            SIM = np.fft.ifft2( np.fft.fft2(SIM) * bl).real
+        else:
+            for tqu in range(len(SIM)):
+                SIM[tqu] = np.fft.ifft2( np.fft.fft2(SIM[tqu]) * bl).real
 
     if cl2 is None:
         SIM = SIM - np.mean(SIM)
