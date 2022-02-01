@@ -64,18 +64,23 @@ def make_temperature_map(mapparams, sim_info):
     cl_fg_tt = sim_info['cl_fg_tt']
     x_grid_deg = sim_info['x_grid_deg']
     y_grid_deg = sim_info['y_grid_deg']
+    kappa_arr = sim_info['kappa_array']
     el = sim_info['el']
     cl_tt=sim_info['cl_tt']
     unlensed_cmb = np.asarray( [flatsky.make_gaussian_realisation(mapparams, el, cl_tt, bl=None)] )
+    lensed_map=np.asarray(lensing.perform_lensing(r, unlensed_cmb, kappa_arr, mapparams))
     noise_map=np.asarray( [flatsky.make_gaussian_realisation(mapparams, el, nl_tt,bl=None)] )
     if sim_info['fg_gaussian']:
-        fg_map=np.asarray( [flatsky.make_gaussian_realisation(mapparams, el, cl_fg[0])] )
-    lensed_cmb=np.asarray(lensing.perform_lensing(r, unlensed_cmb, kappa_arr, fftmapparams))
+        lensed_map = lensed_map + np.asarray( [flatsky.make_gaussian_realisation(mapparams, el, cl_fg[0],bl=None)] )
 
+    print('Warning --- TBD here to do cut down??')
+
+   if bl is not None:
+        if np.ndim(bl) != 2:
+            bl = cl_to_cl2d(el, bl, mapparams)
+        lensed_map = np.fft.ifft2( np.fft.fft2(lensed_map) * bl).real
     
-    
-    return len
-    
+    return lensed_map + noise_map
 
 
 def prep_fg_spectra(sim_info):
@@ -281,7 +286,9 @@ def get_rotated_tqu_cutouts_simple(sim_arr, grad_orientation_arr, totobjects, tq
 
 
 
-def get_rotated_tqu_cutout(maps, sim_arr_for_grad_direction, totobjects, tqulen, mapparams, cutout_size_am, perform_rotation = True, apply_wiener_filter=True, cl_signal=None, cl_noise=None, lpf_gradient_filter=None, cutout_size_am_for_grad=6.):
+def get_rotated_tqu_cutout(maps, sim_arr_for_grad_direction, totobjects, tqulen, mapparams, 
+                            cutout_size_am, perform_rotation = True, apply_wiener_filter=True, 
+                            cl_signal=None, cl_noise=None, lpf_gradient_filter=None, cutout_size_am_for_grad=6.):
 large_cutout, local_mask, small_apod_mask, mapparams, fftmapparams,
                                                                         cutout_size_am, cutout_size_am_for_grad, 
                                                                         gradient_map = None,
