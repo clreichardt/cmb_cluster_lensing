@@ -126,7 +126,61 @@ def wiener_filter(flatskymapparams, cl_signal, cl_noise, el = None):
 
 ################################################################################################################
 
-def map2cl(flatskymapparams, flatskymap1, flatskymap2 = None, binsize = None, mask = None, filter_2d = None):
+def map2cl(mask, pixel_arcmin, flatskymap1, flatskymap2 = None, binsize = None, filter_2d = None):
+
+    """
+    map2cl module - get the power spectra of map/maps
+
+    input:
+    pixel_arcmin: resolution in arcminutes
+    
+    mask: larger mask file. the input maps will be expanded to these dimensions
+
+    flatskymap1: map1. Must be smaller or equal in both dimensions to mask
+    flatskymap2: provide map2 with dimensions (ny, nx) cross-spectra
+
+    binsize: el bins. computed automatically if None
+
+    cross_power: if set, then compute the cross power between flatskymap1 and flatskymap2
+
+    output:
+    auto/cross power spectra: [el, cl, cl_err]
+    """
+
+    dx_rad = np.radians(pixel_arcmin/60.)
+    nx,ny = mask.shape
+    fsky = np.mean(mask)
+    prefactor = (dx_rad**2)/(nx*ny)/fsky
+
+    loc_filter2d = 1        
+    if filter_2d is not None:
+        mx,my = filter_2d.shape
+        assert(mask.shape == filter_2d.shape)
+        loc_filter2d = filter_2d
+
+    mx,my = flatskymap1.shape    
+    loc_map = mask.copy()
+    loc_map[0:mx,0:my] *= flatskymap1   
+    if flatskymap2 is None:
+        flatskymap_psd = abs( np.fft.fft2(flatskymap1) * loc_filter2d)**2
+    else: #cross spectra now
+        assert( flatskymap1.shape == flatskymap2.shape )
+        loc_map2 = mask.copy()
+        loc_map2[0:mx,0:my] *= flatskymap2
+        flatskymap_psd = np.fft.fft2(loc_map2) * np.conj(np.fft.fft2(loc_map1)
+
+
+    lx, ly = get_lxly([nx,ny,pixel_arcmin])
+
+    if binsize == None:
+        binsize = lx.ravel()[1] -lx.ravel()[0]
+    rad_prf = radial_profile(flatskymap_psd, (lx,ly), bin_size = binsize, minbin = 100, maxbin = 10000, to_arcmins = 0)
+
+    return rad_prf[:,0], rad_prf[:,1]*prefactor
+
+
+
+def old_map2cl(flatskymapparams, flatskymap1, flatskymap2 = None, binsize = None, mask = None, filter_2d = None):
 
     """
     map2cl module - get the power spectra of map/maps
