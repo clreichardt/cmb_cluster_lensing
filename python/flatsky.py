@@ -1,6 +1,6 @@
-import numpy as np, sys, os, scipy as sc
-from scipy.stats import binned_statistic as binstats
-
+#import numpy as np, sys, os, scipy as sc
+#from scipy.stats import binned_statistic as binstats
+import numpy as np
 ################################################################################################################
 #flat-sky routines
 ################################################################################################################
@@ -157,7 +157,7 @@ def map2cl(mask, pixel_arcmin, flatskymap1, flatskymap2 = None, binsize = None, 
     if filter_2d is not None:
         mx,my = filter_2d.shape
         assert(mask.shape == filter_2d.shape)
-       loc_filter2d = filter_2d
+        loc_filter2d = filter_2d
 
     mx,my = flatskymap1.shape
     assert (mx <= nx and my <= ny)
@@ -283,24 +283,36 @@ def radial_profile(z, xy = None, binarr = None, bin_size = 1., minbin = 0., maxb
 
 ############################################
 def figure_fft_size(dims):
-    n = max(dims) # doing square
+    try:
+        n = max(dims) # doing square
+    except TypeError:
+        n=dims #presumably int
     logn  = np.log(n)
     log2  = np.log(2)
     ratio = logn/log2
     pow2  = np.int(ratio) # +1 to zeropad x 2
     resid = ratio-pow2
     pow2 += 1
-    # assert pow2 > 3
+    # assert pow2 > 4
+    #go back to raw log
+    resid *= log2
+    #print(n,ratio,resid)
     if resid < 0.0001: # close enough to x2
         return 1 << pow2
     if resid <=  np.log(1.125):
         return (9 <<(pow2-3)) 
     if resid <=  np.log(1.25):
-        return (5 <<(pow2-2)) 
+        return (5 <<(pow2-2))
+    if resid <=  np.log(1.3125):
+        return (21 <<(pow2-4)) 
     if resid <= np.log(1.5):
         return 3 << (pow2-1)
+    if resid <=  np.log(1.6875):
+        return (27 <<(pow2-4)) 
     if resid <= np.log(1.75):
         return 7 << (pow2-2)
+    if resid <= np.log(1.875):
+        return 15 << (pow2-3)
     return 1 << pow2+1
     
 
@@ -309,10 +321,12 @@ def figure_fft_size(dims):
 def make_gaussian_realisation(mapparams, el, cl, cl2 = None, cl12 = None, cltwod=None, tf=None, bl = None, qu_or_eb = 'qu'):
 
     
-    
+
     ny, nx, dxin = mapparams
     use_n = figure_size([nx,ny])
-
+    #this is the zero-padded size
+    fft_mapparams = [use_n, use_n, dxin]
+    
     arcmins2radians = np.radians(1/60.)
 
     dx = dxin * arcmins2radians
@@ -322,9 +336,19 @@ def make_gaussian_realisation(mapparams, el, cl, cl2 = None, cl12 = None, cltwod
     norm = np.sqrt(1./ (dx**2.))
     ################################################
 
+    # Error checking
+    if cltwod is not None and cltwod.shape != (use_n,use_n):
+        raise ValueError('cltwod provided, but is wrong shape - need square array dim = {}'.format(use_n))
+    if tf is not None:
+        if isinstance(tf, np.ndarray) and tf.shape != (use_n,use_n):
+            raise ValueError('tf provided, but is wrong shape - need square array dim = {}'.format(use_n))
+        else:
+            if tf['T'].shape != (use_n, use_n) or tf['E'].shape != (use_n, use_n):
+                raise ValueError('tf[T/E] provided, but one is wrong shape - need square array dim = {}'.format(use_n))
     #if cltwod is given, directly use it, otherwise do 1d to 2d
-    if cltwod is None:
-        cltwod = cl_to_cl2d(el, cl, mapparams)
+    
+    if cltwod is None 
+        cltwod = cl_to_cl2d(el, cl, fft_mapparams)
 
     # if the tranfer function is given, correct the 2D cl by tf
     if tf is not None:
