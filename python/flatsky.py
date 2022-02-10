@@ -1,4 +1,5 @@
 import numpy as np, sys, os, scipy as sc
+from scipy.stats import binned_statistic as binstats
 
 ################################################################################################################
 #flat-sky routines
@@ -156,9 +157,10 @@ def map2cl(mask, pixel_arcmin, flatskymap1, flatskymap2 = None, binsize = None, 
     if filter_2d is not None:
         mx,my = filter_2d.shape
         assert(mask.shape == filter_2d.shape)
-        loc_filter2d = filter_2d
+       loc_filter2d = filter_2d
 
-    mx,my = flatskymap1.shape    
+    mx,my = flatskymap1.shape
+    assert (mx <= nx and my <= ny)
     loc_map = mask.copy()
     loc_map[0:mx,0:my] *= flatskymap1   
     if flatskymap2 is None:
@@ -167,9 +169,9 @@ def map2cl(mask, pixel_arcmin, flatskymap1, flatskymap2 = None, binsize = None, 
         assert( flatskymap1.shape == flatskymap2.shape )
         loc_map2 = mask.copy()
         loc_map2[0:mx,0:my] *= flatskymap2
-        flatskymap_psd = np.fft.fft2(loc_map2) * np.conj(np.fft.fft2(loc_map1)
+        flatskymap_psd = np.fft.fft2(loc_map2) * np.conj(np.fft.fft2(loc_map1))
 
-
+                                                
     lx, ly = get_lxly([nx,ny,pixel_arcmin])
 
     if binsize == None:
@@ -230,52 +232,90 @@ def old_map2cl(flatskymapparams, flatskymap1, flatskymap2 = None, binsize = None
 
 ################################################################################################################
 
-def radial_profile(z, xy = None, bin_size = 1., minbin = 0., maxbin = 10., to_arcmins = 1):
+def radial_profile(z, xy = None, binarr = None, bin_size = 1., minbin = 0., maxbin = 10., to_arcmins = True, request_std=False):
 
     """
-    get the radial profile of an image (both real and fourier space)
+    get the radial profile of an image (could be real and fourier space) - only keeps real parts
+    returns N x 3 array
+    :,0 == bin centres
+    :,1 == mean value
+    :,2 == std error on mean
+
+    if binarr exists, uses that (no error checking). 
+    otherwise creates uniform binning:
+    (minbin <= x < minbin+binsize), ....
+    Note -- the maxium bin edge may not be maxbin if (maxbin-minbin)/bin_size is not integer. It could be higher or lower. 
+    bin_size and minbin are fixed
     """
 
     z = np.asarray(z)
     if xy is None:
-        x, y = np.indices(image.shape)
+        x, y = np.indices(z.shape)
     else:
         x, y = xy
-
+                                                         
     #radius = np.hypot(X,Y) * 60.
     radius = (x**2. + y**2.) ** 0.5
+                                                         
     if to_arcmins: radius *= 60.
 
-    binarr=np.arange(minbin,maxbin,bin_size)
-    radprf=np.zeros((len(binarr),3))
+    if binarr is None:
+        binarr=np.arange(minbin,maxbin+bin_size/2,bin_size) # this gaurantees lower edge. Upper edge may shift if not integer multiple
 
-    hit_count=[]
 
-    for b,bin in enumerate(binarr):
-        ind=np.where((radius>=bin) & (radius<bin+bin_size))
-        radprf[b,0]=(bin+bin_size/2.)
-        hits = len(np.where(abs(z[ind])>0.)[0])
+    bin_numerator, _, _ = binstats(radius,  z, statistic='sum',
+                                   bins=binarr,range=[binarr[0],binarr[-1]])
+    bin_hits, _, _      = binstats(radius,  z, statistic='count',
+                                   bins=binarr,range=[binarr[0],binarr[-1]])
+    if request_std:
+        bin_std, _, _   = binstats(radius,  z, statistic='std',
+                                   bins=binarr,range=[binarr[0],binarr[-1]])
 
-        if hits>0:
-            radprf[b,1]=np.sum(z[ind])/hits
-            radprf[b,2]=np.std(z[ind])
-        hit_count.append(hits)
-
-    hit_count=np.asarray(hit_count)
-    std_mean=np.sum(radprf[:,2]*hit_count)/np.sum(hit_count)
-    errval=std_mean/(hit_count)**0.5
-    radprf[:,2]=errval
-
+    radprf=np.zeros([len(bin_hits),3],dtype=np.float32)
+    use = bin_hits > 0
+    radprf[use,1]=bin_numerator[use]/bin_hits[use]
+    if request_std:
+        radprf[use,2]=bin_std[use]/np.sqrt(bin_hits[use])
+    radprf[:,0] = 0.5*(binarr[:-1]+binarr[1:])
+    
     return radprf
+
+
+############################################
+def figure_fft_size(dims):
+    n = max(dims) # doing square
+    logn  = np.log(n)
+    log2  = np.log(2)
+    ratio = logn/log2
+    pow2  = np.int(ratio) # +1 to zeropad x 2
+    resid = ratio-pow2
+    pow2 += 1
+    # assert pow2 > 3
+    if resid < 0.0001: # close enough to x2
+        return 1 << pow2
+    if resid <=  np.log(1.125):
+        return (9 <<(pow2-3)) 
+    if resid <=  np.log(1.25):
+        return (5 <<(pow2-2)) 
+    if resid <= np.log(1.5):
+        return 3 << (pow2-1)
+    if resid <= np.log(1.75):
+        return 7 << (pow2-2)
+    return 1 << pow2+1
+    
 
 ################################################################################################################
 
 def make_gaussian_realisation(mapparams, el, cl, cl2 = None, cl12 = None, cltwod=None, tf=None, bl = None, qu_or_eb = 'qu'):
 
-    ny, nx, dx = mapparams
+    
+    
+    ny, nx, dxin = mapparams
+    use_n = figure_size([nx,ny])
+
     arcmins2radians = np.radians(1/60.)
 
-    dx *= arcmins2radians
+    dx = dxin * arcmins2radians
 
     ################################################
     #map stuff
