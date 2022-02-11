@@ -36,15 +36,15 @@ def get_cmb_cls(cls_file, pol=False):
     #print(len(el))
     return el, cl
 
-def get_big_cutout(mapparams,index,data_type,sim_info=sim_info,data_info=data_info):
+def get_cutout(mapparams,index,data_type,sim_info=sim_info,data_info=data_info):
     if is_sim(data_type):
-        return get_big_cutout_sim(mapparams,index,data_type,sim_info)
-    return get_big_cutout_data(mapparams,index,data_type,data_info)
+        return get_cutout_sim(mapparams,index,data_type,sim_info)
+    return get_cutout_data(mapparams,index,data_type,data_info)
     
 
-def get_big_cutout_sim(mapparams,index,data_type,sim_info):
+def get_cutout_sim(mapparams,index,data_type,sim_info):
     nx,ny,dx = mapparams
-    nx0,ny0,dx0 = sim_info['fftmapparams']
+    #nx0,ny0,dx0 = sim_info['fftmapparams']
     
 
 
@@ -52,9 +52,9 @@ def get_big_cutout_sim(mapparams,index,data_type,sim_info):
     # WRITE MORE 
     ############
     if is_pol(data_type):
-        big_map = make_pol_map(mapparams,sim_info)
+        map = make_pol_map(mapparams,sim_info)
     else:
-        big_map = make_tempurature_map(mapparams,sim_info)
+        map = make_temperature_map(mapparams,sim_info)
 
 
 

@@ -15,14 +15,24 @@ from pylab import *
 #################################################################################
 #################################################################################
 
-def get_deflection_angle_from_convergence(kappa, mapparams):
+def get_deflection_angle_from_convergence(kappa, mapparams,zero_pad = True):
+    
 
-    ny, nx, dx = mapparams
-    lx, ly = flatsky.get_lxly(mapparams)
-    ell = np.hypot(lx, ly)
+    ny, nx, dx_arcmin = mapparams
+    if zero_pad:
+        use_n = figure_size([nx,ny])
+        #this is the zero-padded size
+        fft_mapparams = [use_n, use_n, dx_arcmin]
+        loc_kappa = np.zeros([use_n,use_n])
+        loc_kappa[:ny,:nx]=kappa
+    else: 
+        fft_mapparams = mapparams
+        loc_kappa = kappa
+        
+    lx, ly = flatsky.get_lxly(fft_mapparams)
 
-    dx_rad = np.radians(dx/60.)
-    phi_fft = -2. * dx_rad * dx_rad * np.fft.fft2(kappa)/(ell**2)
+    dx_rad = np.radians(dx_arcmin/60.)
+    phi_fft = -2. * dx_rad * dx_rad * np.fft.fft2(loc_kappa)/(lx**2 + ly**2)
     phi_fft[np.isnan(phi_fft)] = 0.
     phi_fft[np.isinf(phi_fft)] = 0.
 
@@ -30,17 +40,16 @@ def get_deflection_angle_from_convergence(kappa, mapparams):
     def_y    = np.fft.ifft2(-1j * phi_fft * ly) / ( dx_rad * dx_rad )
 
 
-    return def_x, def_y
+    return def_x[:ny,:nx], def_y[:ny,:nx]
 
 def perform_lensing(theta_x_grid_deg, theta_y_grid_deg, image, kappa, mapparams, poly_deg = 5):
-
-    ny, nx, dx = mapparams
+    # no error checking, but assume sizes all match
     theta_x_grid, theta_y_grid = np.radians(theta_x_grid_deg), np.radians(theta_y_grid_deg)
     def_x, def_y = get_deflection_angle_from_convergence(kappa, mapparams)
     mod_theta_x_grid = (theta_x_grid + def_x).flatten().real
     mod_theta_y_grid = (theta_y_grid + def_y).flatten().real
 
-    image_lensed = intrp.RectBivariateSpline( theta_y_grid[:,0], theta_x_grid[0,:], image, kx = poly_deg, ky = poly_deg).ev(mod_theta_y_grid, mod_theta_x_grid).reshape([ny,nx])
+    image_lensed = intrp.RectBivariateSpline( theta_y_grid[:,0], theta_x_grid[0,:], image, kx = poly_deg, ky = poly_deg).ev(mod_theta_y_grid, mod_theta_x_grid).reshape(mapparams[:2])
 
     return image_lensed
 
@@ -67,7 +76,7 @@ def get_rv(cosmo, Mdelta, z, h, delta, rho_def):
 
 #################################################################################
 
-def get_nfw_kappa_deflection_angle(cosmo, theta, Mdelta, z, h, delta, rho_def, profile_name, z_source):
+def get_nfw_kappa_deflection_angle(cosmo, theta, Mdelta, z, h, delta, rho_def, profile_name, z_source,deflection=True):
 
     """
     returns convergence and deflection angle vectors. Currently only supports NFW.
@@ -116,7 +125,7 @@ def get_nfw_kappa_deflection_angle(cosmo, theta, Mdelta, z, h, delta, rho_def, p
             #Final kappa
             kappa = sigma/sigma_c
 
-        if (1): #deflection angle
+        if deflection: #deflection angle is requested
             x = x.value
 
             h_theta = np.zeros(x.shape)
@@ -128,10 +137,10 @@ def get_nfw_kappa_deflection_angle(cosmo, theta, Mdelta, z, h, delta, rho_def, p
             h_theta[eq_one] = 1./x[eq_one] * ( np.log(x[eq_one]/2.) )
 
             A = (Mdelta * cdelta**2.)/(np.log(1.+cdelta)-cdelta/(1.+cdelta))/4/np.pi
-            def_angle_vector = (16 * np.pi * const.G.cgs * A.to('g') / cdelta/ const.c.cgs.to('cm/s')**2. / r_v.to('cm')) * (distance_lens_source/distance_source) * h_theta
-
-
-    return kappa.value, def_angle_vector.value
+            def_angle_vector = (16 * np.pi * const.G.cgs * A.to('g') / cdelta/ const.c.cgs.to('cm/s')**2. / r_v.to('cm')) * (distance_lens_source/distance_source) * h_theta        
+            return kappa.value, def_angle_vector.value  
+        else:
+            return kappa.value, None
 
 #################################################################################
 
@@ -155,7 +164,7 @@ def get_convergence(ra_grid, dec_grid, ra_list, dec_list, mass_list, z_list, par
             theta_grid = map_coords.separation(cluster_coords).value*(np.pi/180.)
 
         #get nFW convergence
-        kappa, def_angle_vector = get_nfw_kappa_deflection_angle(cosmo, theta_grid, Mdelta, z, param_dict['h'], delta = param_dict['delta'], rho_def = param_dict['rho_def'], profile_name = param_dict['profile_name'], z_source = param_dict['z_lss'])
+        kappa, _ = get_nfw_kappa_deflection_angle(cosmo, theta_grid, Mdelta, z, param_dict['h'], delta = param_dict['delta'], rho_def = param_dict['rho_def'], profile_name = param_dict['profile_name'], z_source = param_dict['z_lss'],deflection=False)
         kappa_arr.append( kappa )
 
     if len( np.unique(mass_list) ) == 1 and len( np.unique(z_list) ) == 1:
