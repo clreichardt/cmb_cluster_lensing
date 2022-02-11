@@ -81,21 +81,22 @@ def convert_eb_qu(map1, map2, flatskymapparams, eb_to_qu = 1):
     return map1_mod, map2_mod
 ################################################################################################################
 
-def get_lpf_hpf(flatskymapparams, lmin_lmax, filter_type = 0):
+def get_lpf_hpf(flatskymapparams, lmin_lmax, filter_type = 'lowpass'):
     """
-    filter_type = 0 - low pass filter
-    filter_type = 1 - high pass filter
-    filter_type = 2 - band pass
+    These are step function filters -- 
+    filter_type = 0/'lowpass' - low pass filter
+    filter_type = 1/'highpass' - high pass filter
+    filter_type = 2/'bandpass' - band pass
     """
 
     lx, ly = get_lxly(flatskymapparams)
     ell = np.sqrt(lx**2. + ly**2.)
     fft_filter = np.ones(ell.shape)
-    if filter_type == 0:
+    if filter_type == 0 or filter_type == 'lowpass':
         fft_filter[ell>lmin_lmax] = 0.
-    elif filter_type == 1:
+    elif filter_type == 1 or filter_type == 'highpass':
         fft_filter[ell<lmin_lmax] = 0.
-    elif filter_type == 2:
+    elif filter_type == 2 or filter_type == 'bandpass':
         lmin, lmax = lmin_lmax
         fft_filter[ell<lmin] = 0.
         fft_filter[ell>lmax] = 0
@@ -107,21 +108,21 @@ def get_lpf_hpf(flatskymapparams, lmin_lmax, filter_type = 0):
 ################################################################################################################
 
 def wiener_filter(flatskymapparams, cl_signal, cl_noise, el = None):
-
+    #note any ells outside provided el's will be set to zero for
+    
     if el is None:
         el = np.arange(len(cl_signal))
 
     ny, nx, dx = flatskymapparams
 
-    #get 2D cl
-    cl_signal2d = cl_to_cl2d(el, cl_signal, flatskymapparams)
-    cl_noise2d = cl_to_cl2d(el, cl_noise, flatskymapparams)
-
-    wiener_filter = cl_signal2d / (cl_signal2d + cl_noise2d)
-    badinds = np.where(cl_signal2d + cl_noise2d == 0.)
-    wiener_filter[badinds] = 0.
-    wiener_filter[np.isnan(wiener_filter)] = 0.
-    wiener_filter[np.isinf(wiener_filter)] = 0.
+    #prep 1d version
+    wiener = cl_signal / (cl_signal + cl_noise)
+    wiener[cl_signal + cl_noise <= 0] =  0.0
+    wiener[np.isnan[wiener]]=0.0
+    wiener[np.isinf[wiener]]=0.0
+    
+    #now throw it to 2d
+    wiener_filter = cl_to_cl2d(el, wiener, flatskymapparams)
 
     return wiener_filter
 
@@ -170,8 +171,7 @@ def map2cl(mask, pixel_arcmin, flatskymap1, flatskymap2 = None, binsize = None, 
         loc_map2 = mask.copy()
         loc_map2[0:mx,0:my] *= flatskymap2
         flatskymap_psd = np.fft.fft2(loc_map2) * np.conj(np.fft.fft2(loc_map1))
-
-                                                
+        
     lx, ly = get_lxly([nx,ny,pixel_arcmin])
 
     if binsize == None:
