@@ -20,43 +20,45 @@ print('\n')
 ########################
 
 ########################
-parser = argparse.ArgumentParser(description='')
-parser.add_argument('-dataset_fname', dest='dataset_fname', action='store', help='dataset_fname', type=str, default='../results//nx120_dx1/beam1.2/noise5/10amcutouts/nogaussianfg/T/clusters_700objects_10sims0to10.npy')
-parser.add_argument('-minM', dest='minM', action='store', help='minM', type=float, default=0.)
-parser.add_argument('-maxM', dest='maxM', action='store', help='maxM', type=float, default=4.)
-parser.add_argument('-delM', dest='delM', action='store', help='delM', type=float, default=0.1)
-parser.add_argument('-totiters_for_model', dest='totiters_for_model', action='store', help='totiters_for_model', type=int, default=1)#25)
-parser.add_argument('-random_seed_for_models', dest='random_seed_for_models', action='store', help='random_seed_for_models', type=int, default=100)
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='')
+    parser.add_argument('-dataset_fname', dest='dataset_fname', action='store', help='dataset_fname', type=str, default='../results//nx120_dx1/beam1.2/noise5/10amcutouts/nogaussianfg/T/clusters_700objects_10sims0to10.npy')
+    parser.add_argument('-minM', dest='minM', action='store', help='minM', type=float, default=0.)
+    parser.add_argument('-maxM', dest='maxM', action='store', help='maxM', type=float, default=4.)
+    parser.add_argument('-delM', dest='delM', action='store', help='delM', type=float, default=0.1)
+    parser.add_argument('-totiters_for_model', dest='totiters_for_model', action='store', help='totiters_for_model', type=int, default=1)#25)
+    parser.add_argument('-random_seed_for_models', dest='random_seed_for_models', action='store', help='random_seed_for_models', type=int, default=100)
 
-args = parser.parse_args()
-args_keys = args.__dict__
-for kargs in args_keys:
-    param_value = args_keys[kargs]
+    args = parser.parse_args()
+    args_keys = args.__dict__
+    for kargs in args_keys:
+        param_value = args_keys[kargs]
 
-    if isinstance(param_value, str):
-        cmd = '%s = "%s"' %(kargs, param_value)
-    else:
-        cmd = '%s = %s' %(kargs, param_value)
-    exec(cmd)
+        if isinstance(param_value, str):
+            cmd = '%s = "%s"' %(kargs, param_value)
+        else:
+            cmd = '%s = %s' %(kargs, param_value)
+        exec(cmd)
 
-########################
+    ########################
 
-########################
-data = np.load(dataset_fname, allow_pickle= True).item()
-param_dict = data['param_dict']
+    ########################
+def generate_models(dataset_fname):
+    data = np.load(dataset_fname, allow_pickle= True).item()
+    param_dict = data['param_dict']
 
-data_folder = param_dict['data_folder']
-results_folder = param_dict['results_folder']
+    data_folder = param_dict['data_folder']
+    results_folder = param_dict['results_folder']
 
-#params or supply a params file
-dx = param_dict['dx'] #pixel resolution in arcmins
-boxsize_am = param_dict['boxsize_am'] #boxsize in arcmins
-nx = int(boxsize_am/dx)
-mapparams = [nx, nx, dx]
-x1,x2 = -nx/2. * dx, nx/2. * dx
-verbose = 0
-pol = param_dict['pol']
-debug = param_dict['debug']
+    #params or supply a params file
+    dx = param_dict['dx'] #pixel resolution in arcmins
+    boxsize_am = param_dict['boxsize_am'] #boxsize in arcmins
+    nx = int(boxsize_am/dx)
+    mapparams = [nx, nx, dx]
+    x1,x2 = -nx/2. * dx, nx/2. * dx
+    verbose = 0
+    pol = param_dict['pol']
+    debug = param_dict['debug']
 
 #beam and noise levels
 noiseval = param_dict['noiseval'] #uK-arcmin
